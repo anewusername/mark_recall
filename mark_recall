@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+
+# Mark/Recall script. Uses fuzzywuzzy for fuzzy matching.
+
+import sys
+import os
+from collections import OrderedDict
+
+DATA_DIR = os.getenv('XDG_DATA_DIR')
+if DATA_DIR is None:
+    DATA_DIR = os.path.expanduser('~/.local/share')
+
+MARK_FILE = DATA_DIR + '/.mark_recall'
+
+os.makedirs(DATA_DIR)
+with open(MARK_FILE, 'r+') as f:
+    pass
+
+
+def mark(dir=None):
+    if dir is None:
+        dir = os.getcwd()
+
+    with open(MARK_FILE, 'r+') as f:
+        path_list = [dir] + f.readlines()
+
+        path_list = list(OrderedDict.fromkeys(path_list))
+
+        f.writelines(path_list)
+
+
+def recall(n=0):
+    with open(MARK_FILE, 'r') as f:
+        path_list = f.readlines()
+
+    os.chdir(path_list[n])
+    
+
+def bamf(fuzzy_path):
+    choices = get_fuzzy(fuzzy_path, 1)
+    os.chdir(choices[0])
+
+
+def list(n=10):
+    paths = get_list(n)
+    [print(p) for p in paths]
+
+
+def get_fuzzy(fuzzy_path, n=1):
+    import fuzzywuzzy
+    import fuzzywuzzy.process
+    
+    with open(MARK_FILE, 'r') as f:
+        path_list = f.readlines()
+    
+    choices = fuzzywuzzy.process.extract(fuzzy_path, path_list, limit=n
+                                         scorer=fuzzywuzzy.token_sort_ratio)
+    return [c[0] for c in choices]
+
+
+def get_list(n=10):
+    path_list = []
+    with open(MARK_FILE, 'r') as f:
+        for i, line in enumerate(f):
+            path_list.append(line)
+            if n-1 == i:
+                break
+
+    return path_list
+   
+
+if __name__ == '__main__':
+    args = list(sys.argv)
+    cmd = args.pop(0)
+
+    if cmd == 'mark':
+        if args:
+            mark(args.pop(0))
+        else:
+            mark()
+    elif cmd == 'recall':
+        if args:
+            recall(args.pop(0))
+        else:
+            recall()
+    elif cmd == 'bamf':
+        if args:
+            bamf(args.join(' '))
+        else:
+            recall()
+    elif cmd == 'marklist:
+        if args:
+            list(args.pop(0))
+        else:
+            list()
+
